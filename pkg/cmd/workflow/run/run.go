@@ -1,9 +1,11 @@
 package run
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/cli/cli/api"
 	"github.com/cli/cli/internal/ghrepo"
@@ -19,7 +21,9 @@ type RunOptions struct {
 	BaseRepo   func() (ghrepo.Interface, error)
 
 	Selector string
-	Prompt   bool
+	Ref      string
+
+	Prompt bool
 }
 
 func NewCmdRun(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command {
@@ -51,6 +55,7 @@ func NewCmdRun(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 			return runRun(opts)
 		},
 	}
+	cmd.Flags().StringVarP(&opts.Ref, "ref", "r", "", "The branch or tag name which contains the version of the workflow file you'd like to run")
 
 	return cmd
 }
@@ -78,9 +83,54 @@ func runRun(opts *RunOptions) error {
 		return err
 	}
 
-	fmt.Printf("DBG %#v\n", workflow)
+	ref := opts.Ref
 
-	// TODO
+	if ref == "" {
+		ref, err = api.RepoDefaultBranch(client, repo)
+		if err != nil {
+			return fmt.Errorf("unable to determine default branch for %s: %w", ghrepo.FullName(repo), err)
+		}
+	}
+
+	fmt.Printf("DBG %#v\n", workflow)
+	fmt.Printf("DBG %#v\n", ref)
+
+	yamlContent, err := getWorkflowContent(client, repo, workflow, ref)
+	if err != nil {
+		return fmt.Errorf("unable to fetch workflow file content: %w", err)
+	}
+
+	fmt.Printf("DBG %#v\n", yamlContent)
+
+	// TODO  once end-to-end is working, circle back and see if running a local workflow remotely is feasible by doing git stuff automagically in a throwaway branch.
+
+	// TODO get yaml
+	// TODO parse yaml
+	// TODO ensure it is a workflow_dispatch
+	// TODO generate survey prompts for the inputs
+	// TODO validate whatever input we got
+	// TODO create the dispatch event
 
 	return nil
+}
+
+func getWorkflowContent(client *api.Client, repo ghrepo.Interface, workflow *shared.Workflow, ref string) (string, error) {
+	path := fmt.Sprintf("repos/%s/contents/%s?ref=%s", ghrepo.FullName(repo), workflow.Path, url.QueryEscape(ref))
+
+	type Result struct {
+		Content string
+	}
+
+	var result Result
+	err := client.REST(repo.RepoHost(), "GET", path, nil, &result)
+	if err != nil {
+		return "", err
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(result.Content)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode workflow file: %w", err)
+	}
+
+	return string(decoded), nil
 }
