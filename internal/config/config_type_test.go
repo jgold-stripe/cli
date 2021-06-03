@@ -18,6 +18,7 @@ func Test_fileConfig_Set(t *testing.T) {
 	assert.NoError(t, c.Set("github.com", "git_protocol", "ssh"))
 	assert.NoError(t, c.Set("example.com", "editor", "vim"))
 	assert.NoError(t, c.Set("github.com", "user", "hubot"))
+	assert.NoError(t, c.Set("example.com", "http_unix_socket", "/foo/socket"))
 	assert.NoError(t, c.Write())
 
 	assert.Contains(t, mainBuf.String(), "editor: nano")
@@ -27,6 +28,7 @@ func Test_fileConfig_Set(t *testing.T) {
     user: hubot
 example.com:
     editor: vim
+    http_unix_socket: /foo/socket
 `, hostsBuf.String())
 }
 
@@ -50,6 +52,8 @@ func Test_defaultConfig(t *testing.T) {
 		# Aliases allow you to create nicknames for gh commands
 		aliases:
 		    co: pr checkout
+		# The path to a unix socket through which send HTTP connections. If blank, HTTP traffic will be handled by net/http.DefaultTransport.
+		http_unix_socket:
 	`)
 	assert.Equal(t, expected, mainBuf.String())
 	assert.Equal(t, "", hostsBuf.String())
@@ -81,6 +85,9 @@ func Test_ValidateValue(t *testing.T) {
 
 	err = ValidateValue("got", "123")
 	assert.NoError(t, err)
+
+	err = ValidateValue("http_unix_socket", "really_anything/is/allowed/and/net.Dial\\(...\\)/will/ultimately/validate")
+	assert.NoError(t, err)
 }
 
 func Test_ValidateKey(t *testing.T) {
@@ -97,5 +104,8 @@ func Test_ValidateKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = ValidateKey("pager")
+	assert.NoError(t, err)
+
+	err = ValidateKey("http_unix_socket")
 	assert.NoError(t, err)
 }

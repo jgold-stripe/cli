@@ -19,6 +19,7 @@ hosts:
   github.com:
     user: monalisa
     oauth_token: OTOKEN
+    http_unix_socket: /foo/socket
 `, "")()
 	config, err := parseConfig("config.yml")
 	assert.NoError(t, err)
@@ -28,6 +29,9 @@ hosts:
 	token, err := config.Get("github.com", "oauth_token")
 	assert.NoError(t, err)
 	assert.Equal(t, "OTOKEN", token)
+	socket, err := config.Get("github.com", "http_unix_socket")
+	assert.NoError(t, err)
+	assert.Equal(t, "/foo/socket", socket)
 }
 
 func Test_parseConfig_multipleHosts(t *testing.T) {
@@ -36,9 +40,11 @@ hosts:
   example.com:
     user: wronguser
     oauth_token: NOTTHIS
+    http_unix_socket: /not/this/socket
   github.com:
     user: monalisa
     oauth_token: OTOKEN
+    http_unix_socket: /foo/socket
 `, "")()
 	config, err := parseConfig("config.yml")
 	assert.NoError(t, err)
@@ -48,6 +54,9 @@ hosts:
 	token, err := config.Get("github.com", "oauth_token")
 	assert.NoError(t, err)
 	assert.Equal(t, "OTOKEN", token)
+	socket, err := config.Get("github.com", "http_unix_socket")
+	assert.NoError(t, err)
+	assert.Equal(t, "/foo/socket", socket)
 }
 
 func Test_parseConfig_hostsFile(t *testing.T) {
