@@ -52,7 +52,7 @@ func New(appVersion string) *cmdutil.Factory {
 				return nil, err
 			}
 
-			return NewHTTPClient(io, cfg, appVersion, true), nil
+			return NewHTTPClient(io, cfg, appVersion, true)
 		},
 		BaseRepo: func() (ghrepo.Interface, error) {
 			remotes, err := remotesFunc()
